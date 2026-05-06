@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traductor AI — QWen2-0.5B</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #7c3aed, #2563eb);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.4rem;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    /* ── Loading section ── */
+    #loading-section { text-align: center; }
+
+    #load-btn {
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: #fff;
+      border: none;
+      padding: 0.85rem 2.5rem;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #load-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #load-btn:hover:not(:disabled) { opacity: 0.88; }
+
+    .note {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    /* progress bar */
+    #progress-wrap {
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    #progress-bar-track {
+      background: #2d3148;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    #progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #7c3aed, #2563eb);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+
+    #progress-text {
+      margin-top: 0.6rem;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      min-height: 1.2em;
+    }
+
+    /* ── Translation section ── */
+    #translation-section { display: none; }
+
+    .lang-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .lang-row select {
+      flex: 1;
+      background: #0f1117;
+      color: #e2e8f0;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 0.55rem 0.85rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .swap-btn {
+      background: #2d3148;
+      border: none;
+      color: #94a3b8;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+
+    .swap-btn:hover { background: #3b4263; }
+
+    .examples-label {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+    }
+
+    .examples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .ex-btn {
+      background: #2d3148;
+      color: #94a3b8;
+      border: 1px solid #3b4263;
+      border-radius: 99px;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .ex-btn:hover { background: #3b4263; color: #e2e8f0; }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 560px) {
+      .panels { grid-template-columns: 1fr; }
+    }
+
+    .panel label {
+      display: block;
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-bottom: 0.4rem;
+    }
+
+    .panel textarea {
+      width: 100%;
+      height: 130px;
+      background: #0f1117;
+      color: #e2e8f0;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 0.75rem;
+      font-size: 0.95rem;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .panel textarea:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
+
+    #output-area {
+      min-height: 130px;
+      background: #0f1117;
+      border: 1px solid #2d3148;
+      border-radius: 10px;
+      padding: 0.75rem;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #output-area.translating {
+      color: #64748b;
+      font-style: italic;
+    }
+
+    #output-area.done {
+      color: #a3e635;
+    }
+
+    #translate-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: #fff;
+      border: none;
+      padding: 0.8rem;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #translate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #translate-btn:hover:not(:disabled) { opacity: 0.88; }
+
+    .status-bar {
+      margin-top: 1rem;
+      font-size: 0.78rem;
+      color: #64748b;
+      text-align: center;
+      min-height: 1em;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #1e3a1e;
+      color: #86efac;
+      border-radius: 99px;
+      padding: 0.15rem 0.7rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Traductor AI</h1>
+  <p>Modelo local: QWen2-0.5B &nbsp;·&nbsp; Sin API keys &nbsp;·&nbsp; 100% en tu navegador</p>
+</header>
+
+<div class="card">
+
+  <!-- ── LOADING ── -->
+  <div id="loading-section">
+    <button id="load-btn" onclick="loadModel()">⬇ Cargar modelo QWen2-0.5B</button>
+    <p class="note">
+      El modelo (~300 MB) se descarga una vez y queda en caché.<br/>
+      Requiere un navegador moderno con soporte WebGPU (Chrome 113+).
+    </p>
+    <div id="progress-wrap">
+      <div id="progress-bar-track">
+        <div id="progress-bar-fill"></div>
+      </div>
+      <p id="progress-text">Iniciando descarga…</p>
+    </div>
+  </div>
+
+  <!-- ── TRADUCTOR ── -->
+  <div id="translation-section">
+
+    <div class="lang-row">
+      <select id="source-lang">
+        <option value="English">Inglés</option>
+        <option value="Spanish">Español</option>
+        <option value="French">Francés</option>
+        <option value="German">Alemán</option>
+        <option value="Portuguese">Portugués</option>
+        <option value="Italian">Italiano</option>
+        <option value="Chinese">Chino</option>
+        <option value="Japanese">Japonés</option>
+      </select>
+      <button class="swap-btn" onclick="swapLangs()" title="Intercambiar idiomas">⇄</button>
+      <select id="target-lang">
+        <option value="Spanish" selected>Español</option>
+        <option value="English">Inglés</option>
+        <option value="French">Francés</option>
+        <option value="German">Alemán</option>
+        <option value="Portuguese">Portugués</option>
+        <option value="Italian">Italiano</option>
+        <option value="Chinese">Chino</option>
+        <option value="Japanese">Japonés</option>
+      </select>
+    </div>
+
+    <p class="examples-label">Ejemplos rápidos:</p>
+    <div class="examples">
+      <button class="ex-btn" onclick="setExample('I like soccer')">I like soccer</button>
+      <button class="ex-btn" onclick="setExample('How are you?')">How are you?</button>
+      <button class="ex-btn" onclick="setExample('What time is it?')">What time is it?</button>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <label>Texto original</label>
+        <textarea id="input-text" placeholder="Escribe o pega el texto aquí…"></textarea>
+      </div>
+      <div class="panel">
+        <label>Traducción <span id="model-badge" class="badge">QWen2-0.5B ✓</span></label>
+        <div id="output-area"></div>
+      </div>
+    </div>
+
+    <button id="translate-btn" onclick="translate()">Traducir</button>
+    <p class="status-bar" id="status-bar"></p>
+  </div>
+
+</div>
+
+<script type="module">
+  import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+  let engine = null;
+
+  /* ── helpers ── */
+  function setStatus(msg) {
+    document.getElementById("status-bar").textContent = msg;
+  }
+
+  function setOutput(text, cls = "") {
+    const el = document.getElementById("output-area");
+    el.textContent = text;
+    el.className = cls;
+  }
+
+  /* ── load model ── */
+  window.loadModel = async function () {
+    const btn = document.getElementById("load-btn");
+    btn.disabled = true;
+
+    const wrap = document.getElementById("progress-wrap");
+    wrap.style.display = "block";
+
+    const fill   = document.getElementById("progress-bar-fill");
+    const ptext  = document.getElementById("progress-text");
+
+    try {
+      engine = await webllm.CreateMLCEngine(
+        "Qwen2-0.5B-Instruct-q4f16_1-MLC",
+        {
+          initProgressCallback: (prog) => {
+            ptext.textContent = prog.text ?? "Cargando…";
+            // parse percentage from text like "Loading [3/10]..." or "xx%"
+            const m = (prog.text || "").match(/(\d+(?:\.\d+)?)\s*%/);
+            if (m) fill.style.width = parseFloat(m[1]) + "%";
+          },
+        }
+      );
+
+      fill.style.width = "100%";
+      ptext.textContent = "Modelo listo ✓";
+
+      setTimeout(() => {
+        document.getElementById("loading-section").style.display = "none";
+        document.getElementById("translation-section").style.display = "block";
+      }, 600);
+
+    } catch (err) {
+      ptext.textContent = "Error al cargar el modelo: " + err.message;
+      btn.disabled = false;
+    }
+  };
+
+  /* ── swap languages ── */
+  window.swapLangs = function () {
+    const src = document.getElementById("source-lang");
+    const tgt = document.getElementById("target-lang");
+    const tmp = src.value;
+    src.value = tgt.value;
+    tgt.value = tmp;
+
+    // also swap text boxes
+    const inp = document.getElementById("input-text");
+    const out = document.getElementById("output-area");
+    if (out.textContent.trim()) {
+      inp.value = out.textContent.trim();
+      setOutput("");
+    }
+  };
+
+  /* ── quick examples ── */
+  window.setExample = function (text) {
+    document.getElementById("input-text").value = text;
+    setOutput("");
+  };
+
+  /* ── translate ── */
+  window.translate = async function () {
+    const input  = document.getElementById("input-text").value.trim();
+    const srcLng = document.getElementById("source-lang").value;
+    const tgtLng = document.getElementById("target-lang").value;
+
+    if (!input) { setOutput("⚠ Escribe algo para traducir.", ""); return; }
+    if (!engine) { setOutput("El modelo aún no está cargado.", ""); return; }
+
+    const btn = document.getElementById("translate-btn");
+    btn.disabled = true;
+    setOutput("Traduciendo…", "translating");
+    setStatus("");
+
+    const t0 = Date.now();
+
+    try {
+      const resp = await engine.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content:
+              `You are a professional translator. ` +
+              `Translate the user's text from ${srcLng} to ${tgtLng}. ` +
+              `Reply with ONLY the translation — no explanations, no extra text.`,
+          },
+          { role: "user", content: input },
+        ],
+        temperature: 0.1,
+        max_tokens: 512,
+      });
+
+      const result = resp.choices[0].message.content.trim();
+      setOutput(result, "done");
+      setStatus(`Completado en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+    } catch (err) {
+      setOutput("Error: " + err.message, "");
+    } finally {
+      btn.disabled = false;
+    }
+  };
+</script>
+
+</body>
+</html>
